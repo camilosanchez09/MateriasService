@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: materias-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: materias
+      POSTGRES_USER: materias
+      POSTGRES_PASSWORD: materias
+    ports:
+      # Host 5433 -> contenedor 5432, para no chocar con la BD del módulo
+      # Estudiantes (que normalmente usa el 5432 por defecto) cuando los
+      # 3 módulos + Gateway corren al tiempo en la misma máquina.
+      - "5433:5432"
+    volumes:
+      - materias_data:/var/lib/postgresql/data
+
+volumes:
+  materias_data:
