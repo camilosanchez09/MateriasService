@@ -34,12 +34,12 @@ public class Curso {
     private Long id;
 
     @NotNull(message = "La materia es obligatoria")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "materia_id", nullable = false)
     private Materia materia;
 
     @NotNull(message = "El docente es obligatorio")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "docente_id", nullable = false)
     private Docente docente;
 
