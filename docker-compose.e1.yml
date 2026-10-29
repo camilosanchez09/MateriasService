@@ -1,5 +1,7 @@
 # Reto E1 - Más piezas: Redis y MinIO
 # Uso: docker compose -f docker-compose.yml -f docker-compose.e1.yml up -d
+# Nota: MinIO borró minio/minio de Docker Hub (11-sep-2026) y Quay pide autenticación
+# desde el 24-sep-2026; se usa pgsty/silo, un fork comunitario compatible con MinIO.
 services:
   redis:
     image: redis:7-alpine
@@ -11,7 +13,7 @@ services:
     networks: [back]
 
   minio:
-    image: minio/minio
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -20,7 +22,7 @@ services:
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "mcli ready local || mc ready local || curl -fs http://localhost:9000/minio/health/live || wget -qO- http://localhost:9000/minio/health/live || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10
