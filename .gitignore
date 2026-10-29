@@ -4,3 +4,6 @@ target/
 *.iml
 .vscode/
 .DS_Store
+
+# Secretos locales de docker compose (Taller 1)
+.env

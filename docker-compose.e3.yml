@@ -1,0 +1,7 @@
+# Reto E3 - Menor privilegio
+# Uso: docker compose -f docker-compose.yml -f docker-compose.e3.yml up -d
+services:
+  materias:
+    read_only: true      # sistema de archivos raíz de solo lectura
+    tmpfs: [/tmp]        # Tomcat necesita escribir archivos temporales en /tmp
+    cap_drop: [ALL]      # sin capabilities de Linux

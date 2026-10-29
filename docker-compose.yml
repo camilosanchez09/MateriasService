@@ -1,21 +1,41 @@
-version: "3.8"
-
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: materias-db
-    restart: unless-stopped
+  materias:
+    build: .                    # el Dockerfile está en la raíz del repo
+    image: materias:1.0
+    ports: ["8081:8081"]        # solo para probar hoy
     environment:
-      POSTGRES_DB: materias
-      POSTGRES_USER: materias
-      POSTGRES_PASSWORD: materias
-    ports:
-      # Host 5433 -> contenedor 5432, para no chocar con la BD del módulo
-      # Estudiantes (que normalmente usa el 5432 por defecto) cuando los
-      # 3 módulos + Gateway corren al tiempo en la misma máquina.
-      - "5433:5432"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-materias:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db-materias:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks: [back]
+
+  db-materias:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - materias_data:/var/lib/postgresql/data
+      - materias-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [back]
+
+networks:
+  back: {}
 
 volumes:
-  materias_data:
+  materias-data: {}

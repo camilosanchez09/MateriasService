@@ -1,0 +1,19 @@
+# Reto E2 - Dos redes: front (pública) y back (privada)
+# Uso: docker compose -f docker-compose.yml -f docker-compose.e2.yml up -d
+services:
+  materias:
+    ports: !reset []            # el módulo deja de publicar el 8081
+    networks: [back]
+
+  gateway:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]          # único punto de entrada desde el anfitrión
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      materias:
+        condition: service_healthy
+    networks: [front, back]
+
+networks:
+  front: {}
