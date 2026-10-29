@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Integrantes** | Brayan Patiño (código: __________) · __________________ (código: __________) |
+| **Integrantes** | Brayan Patiño (código 202221001) · Camilo Sánchez (código 202222724) |
 | **Módulo contenedorizado** | Materias (`MateriasService`: Spring Boot 3.3.4, Java 17, PostgreSQL 16) |
 | **Repositorio / rama** | `https://github.com/camilosanchez09/MateriasService` · rama `taller-contenedores` |
 | **Fecha de ejecución** | 27 y 28 de octubre de 2026 |
