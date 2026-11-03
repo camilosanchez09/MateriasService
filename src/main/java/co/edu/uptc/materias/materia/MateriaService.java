@@ -1,5 +1,6 @@
 package co.edu.uptc.materias.materia;
 
+import co.edu.uptc.materias.archivo.ArchivoMateriaService;
 import co.edu.uptc.materias.exception.ResourceNotFoundException;
 import co.edu.uptc.materias.materia.dto.MateriaPatchRequest;
 import jakarta.persistence.criteria.Predicate;
@@ -18,6 +19,7 @@ import java.util.List;
 public class MateriaService {
 
     private final MateriaRepository repository;
+    private final ArchivoMateriaService archivoService;
 
     @Transactional(readOnly = true)
     public Page<Materia> listar(Pageable pageable) {
@@ -93,6 +95,8 @@ public class MateriaService {
         if (!repository.existsById(id)) {
             throw ResourceNotFoundException.of("Materia", id);
         }
+        // Sus PDFs se borran del bucket solo si la eliminación confirma (si tiene cursos, falla y no se pierde nada).
+        archivoService.eliminarTodosDeMateria(id);
         repository.deleteById(id);
     }
 }

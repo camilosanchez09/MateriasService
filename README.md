@@ -46,9 +46,13 @@ Levanta PostgreSQL en `localhost:5433` (host) -> `5432` (contenedor), con:
 - Usuario: `materias`
 - Password: `materias`
 
-El puerto host 5433 se eligió para no chocar con la base de datos del módulo
-Estudiantes (que normalmente usa 5432) cuando los 4 procesos corren al tiempo en la
-misma máquina. Ya está configurado en `src/main/resources/application.properties`.
+Además levanta **RustFS** (S3 local para los PDFs, puertos 9100/9101) y crea el bucket
+`materias-pdfs` (ver sección 8).
+
+El puerto host se puede cambiar con la variable `DB_PORT` (por defecto 5433): el módulo
+Estudiantes también publica su base en 5433, así que si corren los dos en la misma máquina
+pon, por ejemplo, `DB_PORT=5436` en un archivo `.env` (copia de `.env.example`) y exporta
+la misma variable antes de `mvn spring-boot:run`.
 
 ## 3. Ejecutar la aplicación
 
@@ -82,6 +86,7 @@ prefijo `/api/materias`, que es el que el Gateway enruta hacia este servicio.
 | Materias | `/api/materias`          |
 | Docentes | `/api/materias/docentes` |
 | Cursos   | `/api/materias/cursos`   |
+| PDFs de una materia | `/api/materias/{materiaId}/archivos` (ver sección 8) |
 
 Cada recurso soporta:
 - `GET` (lista paginada) — `pageNumber`, `pageSize`, `sortBy`, `sortDirection`.
@@ -113,10 +118,13 @@ el docente completo. Son los dos que el Gateway llama en los pasos 3 y 4 de
 ## 6. Manejo de errores
 
 Respuestas de error consistentes vía `GlobalExceptionHandler`:
-- `400` — validación fallida o parámetro con formato inválido.
-- `404` — recurso (materia, docente o curso) inexistente.
+- `400` — validación fallida, parámetro con formato inválido o falta el archivo.
+- `404` — recurso (materia, docente, curso o archivo) inexistente, o ruta que no existe.
 - `409` — conflicto de integridad (código/correo duplicado).
+- `413` — el PDF supera 10 MB.
+- `415` — el archivo no es PDF.
 - `500` — error inesperado.
+- `503` — el almacenamiento de archivos (S3) no está disponible.
 
 ## 7. Estructura del código
 
@@ -128,5 +136,57 @@ src/main/java/co/edu/uptc/materias/
 ├── materia/              (Materia, MateriaController, MateriaService, MateriaRepository, dto/)
 ├── docente/              (Docente, DocenteController, DocenteService, DocenteRepository, dto/)
 ├── curso/                (Curso, CursoController, CursoService, CursoRepository, dto/)
+├── archivo/              (ArchivoMateria, controlador, servicio, PdfStorage, S3Config, dto/)
 └── seed/DataSeeder.java
 ```
+
+## 8. PDFs de las materias (Laboratorio 4)
+
+Requisito 5.2: subir y listar PDFs con el contenido temático de cada materia (máximo 10 MB),
+guardados en el **almacenamiento de objetos**, nunca en la base ni en el disco del contenedor.
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| `POST` | `/api/materias/{materiaId}/archivos` | Sube un PDF (multipart, campo `file`) → 201 |
+| `GET` | `/api/materias/{materiaId}/archivos` | Lista los PDFs (más reciente primero) |
+| `GET` | `/api/materias/{materiaId}/archivos/{archivoId}/url` | URL firmada y temporal para descargar → `{ url, expiresIn }` |
+| `DELETE` | `/api/materias/{materiaId}/archivos/{archivoId}` | Elimina metadatos y objeto |
+
+- **Solo PDF de verdad:** se valida por los primeros bytes (`%PDF-`), no por la extensión ni
+  el Content-Type que manda el cliente (`415` si no lo es). Más de 10 MB → `413`.
+- **La base guarda solo metadatos** en la tabla `materia_archivos`: clave del objeto, nombre
+  original, tipo, tamaño y fecha. Ni el binario ni la URL.
+- **Bucket privado:** la descarga es con una URL **firmada** (SigV4) que vence en `PDF_URL_TTL`
+  (10 min por defecto). Sin firma, S3 responde `403`.
+- Si guardar los metadatos falla, se borra el objeto recién subido (sin huérfanos). Al eliminar
+  una materia se eliminan sus PDFs del bucket, solo si la eliminación se confirma.
+- A través del Gateway: subir exige rol `ADMIN`; listar y descargar, cualquier usuario autenticado.
+  Estas rutas no se guardan en el caché del Gateway (las URLs firmadas vencen).
+
+### Local: RustFS
+
+`docker compose up -d` levanta RustFS (compatible con S3; MinIO ya no publica imágenes) en
+`localhost:9100` (consola en `:9101`) y crea el bucket con `amazon/aws-cli`. Para que la API lo use,
+exporta las variables del `.env.example` antes de arrancar:
+
+```powershell
+# PowerShell
+$env:S3_ENDPOINT="http://localhost:9100"; $env:S3_FORCE_PATH_STYLE="true"
+$env:AWS_ACCESS_KEY_ID="materias_s3_local"; $env:AWS_SECRET_ACCESS_KEY="<la del .env>"
+mvn spring-boot:run
+```
+
+```bash
+curl -F "file=@unidad1.pdf" http://localhost:8081/api/materias/1/archivos
+curl http://localhost:8081/api/materias/1/archivos/1/url
+```
+
+### En AWS
+
+- Bucket S3 **privado** (Block Public Access activado). Variables: `S3_BUCKET`, `S3_REGION`,
+  `PDF_URL_TTL`. **No** se definen `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE` ni claves `AWS_*`:
+  el SDK usa las credenciales temporales del rol de la tarea (sin secretos en git ni en la imagen).
+- Permisos mínimos del módulo, solo sobre su bucket: `s3:PutObject`, `s3:GetObject`,
+  `s3:DeleteObject` en `arn:aws:s3:::<bucket>/materias/*`.
+- El SDK usa el cliente HTTP del JDK (`url-connection-client`): los clientes Apache del SDK
+  chocan con la versión de HttpClient que fija Spring Boot 3.3.

@@ -8,6 +8,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -53,6 +57,30 @@ public class GlobalExceptionHandler {
         ApiError body = new ApiError(HttpStatus.CONFLICT.value(), "Conflict",
                 "La operación viola una restricción de la base de datos (ej. código/correo duplicado)");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(ArchivoException.class)
+    public ResponseEntity<ApiError> handleArchivo(ArchivoException ex) {
+        HttpStatus status = ex.getStatus();
+        return ResponseEntity.status(status).body(new ApiError(status.value(), status.getReasonPhrase(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleMaxUpload(MaxUploadSizeExceededException ex) {
+        return handleArchivo(ArchivoException.muyGrande());
+    }
+
+    @ExceptionHandler({MissingServletRequestPartException.class, MultipartException.class})
+    public ResponseEntity<ApiError> handleMissingFile(Exception ex) {
+        return handleArchivo(ArchivoException.requerido());
+    }
+
+    // Sin esto, una ruta inexistente caía en el manejador genérico y respondía 500.
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoRoute(NoResourceFoundException ex) {
+        ApiError body = new ApiError(HttpStatus.NOT_FOUND.value(), "Not Found",
+                "La ruta /" + ex.getResourcePath() + " no existe");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     @ExceptionHandler(Exception.class)

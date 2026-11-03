@@ -1,5 +1,10 @@
 version: "3.8"
 
+# Infraestructura local del módulo Materias: PostgreSQL + RustFS (S3 local para los PDFs).
+#   docker compose up -d
+# Variables opcionales en un archivo .env (copia de .env.example). En AWS, RustFS se reemplaza
+# por un bucket S3 privado y la API toma credenciales del rol de la tarea.
+
 services:
   db:
     image: postgres:16-alpine
@@ -10,12 +15,48 @@ services:
       POSTGRES_USER: materias
       POSTGRES_PASSWORD: materias
     ports:
-      # Host 5433 -> contenedor 5432, para no chocar con la BD del módulo
-      # Estudiantes (que normalmente usa el 5432 por defecto) cuando los
-      # 3 módulos + Gateway corren al tiempo en la misma máquina.
-      - "5433:5432"
+      # Host DB_PORT (5433 por defecto) -> contenedor 5432. Si choca con la BD de otro módulo
+      # en tu máquina (p. ej. Estudiantes también usa 5433), cambia DB_PORT en el .env.
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - materias_data:/var/lib/postgresql/data
 
+  # Almacenamiento de objetos compatible con S3, solo para desarrollo local.
+  # Puertos 9100/9101 para no chocar con el S3 local del módulo Estudiantes (9000/9001).
+  storage:
+    image: rustfs/rustfs
+    container_name: materias-storage
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${AWS_ACCESS_KEY_ID:-materias_s3_local}
+      RUSTFS_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY:-materias_s3_local_clave}
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "${STORAGE_PORT:-9100}:9000"          # API S3
+      - "${STORAGE_CONSOLE_PORT:-9101}:9001"  # consola web
+    volumes:
+      - materias_storage:/data
+
+  # Crea el bucket si no existe y termina. Un bucket nuevo es privado: sin firma no se lee nada.
+  storage-init:
+    image: amazon/aws-cli
+    container_name: materias-storage-init
+    depends_on:
+      - storage
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-materias_s3_local}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-materias_s3_local_clave}
+      AWS_DEFAULT_REGION: ${S3_REGION:-us-east-1}
+      BUCKET: ${S3_BUCKET:-materias-pdfs}
+    entrypoint: >
+      sh -c "S3='aws --endpoint-url http://storage:9000 s3api';
+             for i in $$(seq 1 30); do
+               $$S3 head-bucket --bucket $$BUCKET >/dev/null 2>&1 && echo 'Bucket listo' && exit 0;
+               $$S3 create-bucket --bucket $$BUCKET >/dev/null 2>&1 && echo 'Bucket creado' && exit 0;
+               sleep 2;
+             done; echo 'No se pudo crear el bucket'; exit 1"
+    restart: "no"
+
 volumes:
   materias_data:
+  materias_storage:
