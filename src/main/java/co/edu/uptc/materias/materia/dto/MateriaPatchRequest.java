@@ -4,6 +4,8 @@ public record MateriaPatchRequest(
         String nombre,
         String codigo,
         Integer creditos,
-        String programa
+        String programa,
+        String programaCodigo,
+        Integer semestre
 ) {
 }

@@ -35,10 +35,13 @@ public class CursoService {
      * Filtros soportados (AND, todos opcionales):
      * - periodo: coincidencia exacta (ej. "2026-2").
      * - materiaId / docenteId: cursos de una materia o docente puntual.
+     * - programaCodigo: cursos cuya materia pertenece a ese programa (ISIS, IIND, ...).
+     * - semestre: cursos cuya materia está en ese semestre del pensum.
      * - cupoMin: cupo mayor o igual al valor dado.
      */
     @Transactional(readOnly = true)
-    public Page<Curso> listarConFiltros(String periodo, Long materiaId, Long docenteId, Integer cupoMin, Pageable pageable) {
+    public Page<Curso> listarConFiltros(String periodo, Long materiaId, Long docenteId, Integer cupoMin,
+            String programaCodigo, Integer semestre, Pageable pageable) {
         Specification<Curso> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -48,6 +51,16 @@ public class CursoService {
 
             if (materiaId != null) {
                 predicates.add(cb.equal(root.get("materia").get("id"), materiaId));
+            }
+
+            if (programaCodigo != null && !programaCodigo.isBlank()) {
+                predicates.add(cb.equal(
+                        cb.upper(root.get("materia").get("programaCodigo")),
+                        programaCodigo.toUpperCase()));
+            }
+
+            if (semestre != null) {
+                predicates.add(cb.equal(root.get("materia").get("semestre"), semestre));
             }
 
             if (docenteId != null) {

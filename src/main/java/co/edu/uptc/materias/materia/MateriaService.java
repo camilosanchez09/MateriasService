@@ -27,16 +27,27 @@ public class MateriaService {
     /**
      * Filtros soportados (se combinan con AND, todos opcionales):
      * - programa: coincidencia exacta, case-insensitive.
+     * - programaCodigo: código corto del programa (ISIS, IIND, ...), case-insensitive.
      * - search: texto parcial en nombre o código, case-insensitive.
+     * - semestre: semestre exacto del pensum.
      * - creditosMin: créditos mayores o iguales al valor dado.
      */
     @Transactional(readOnly = true)
-    public Page<Materia> listarConFiltros(String programa, String search, Integer creditosMin, Pageable pageable) {
+    public Page<Materia> listarConFiltros(String programa, String programaCodigo, String search,
+            Integer semestre, Integer creditosMin, Pageable pageable) {
         Specification<Materia> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             if (programa != null && !programa.isBlank()) {
                 predicates.add(cb.equal(cb.lower(root.get("programa")), programa.toLowerCase()));
+            }
+
+            if (programaCodigo != null && !programaCodigo.isBlank()) {
+                predicates.add(cb.equal(cb.upper(root.get("programaCodigo")), programaCodigo.toUpperCase()));
+            }
+
+            if (semestre != null) {
+                predicates.add(cb.equal(root.get("semestre"), semestre));
             }
 
             if (search != null && !search.isBlank()) {
@@ -75,6 +86,8 @@ public class MateriaService {
         existente.setCodigo(datos.getCodigo());
         existente.setCreditos(datos.getCreditos());
         existente.setPrograma(datos.getPrograma());
+        existente.setProgramaCodigo(datos.getProgramaCodigo());
+        existente.setSemestre(datos.getSemestre());
         return repository.save(existente);
     }
 
@@ -85,6 +98,8 @@ public class MateriaService {
         if (patch.codigo() != null) existente.setCodigo(patch.codigo());
         if (patch.creditos() != null) existente.setCreditos(patch.creditos());
         if (patch.programa() != null) existente.setPrograma(patch.programa());
+        if (patch.programaCodigo() != null) existente.setProgramaCodigo(patch.programaCodigo());
+        if (patch.semestre() != null) existente.setSemestre(patch.semestre());
         return repository.save(existente);
     }
 

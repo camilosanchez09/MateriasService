@@ -46,6 +46,10 @@ public class CursoController {
 
             @Parameter(description = "Filtrar por id de docente") @RequestParam(required = false) Long docenteId,
 
+            @Parameter(description = "Filtrar por código del programa de la materia: ISIS, IIND, ICIV, ADEM, CPUB, DERE, TGRE") @RequestParam(required = false) String programaCodigo,
+
+            @Parameter(description = "Filtrar por semestre del pensum de la materia (1 a 10)") @RequestParam(required = false) Integer semestre,
+
             @Parameter(description = "Cupo mínimo (mayor o igual a)") @RequestParam(required = false) Integer cupoMin) {
 
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection)
@@ -54,9 +58,10 @@ public class CursoController {
 
         Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(direction, sortBy));
 
-        boolean hayFiltros = periodo != null || materiaId != null || docenteId != null || cupoMin != null;
+        boolean hayFiltros = periodo != null || materiaId != null || docenteId != null
+                || programaCodigo != null || semestre != null || cupoMin != null;
         Page<Curso> resultado = hayFiltros
-                ? service.listarConFiltros(periodo, materiaId, docenteId, cupoMin, pageable)
+                ? service.listarConFiltros(periodo, materiaId, docenteId, cupoMin, programaCodigo, semestre, pageable)
                 : service.listar(pageable);
 
         return ResponseEntity.ok(resultado.map(CursoResponse::from));

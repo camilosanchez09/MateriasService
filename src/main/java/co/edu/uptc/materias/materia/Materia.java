@@ -43,4 +43,18 @@ public class Materia {
 
     @NotBlank(message = "El programa académico es obligatorio")
     private String programa;
+
+    /**
+     * Código corto del programa (ISIS, IIND, ICIV, ADEM, CPUB, DERE, TGRE).
+     * Es el dato estable que usan el Gateway y el Frontend para validar/filtrar.
+     */
+    @NotBlank(message = "El código del programa es obligatorio")
+    @Column(length = 20)
+    private String programaCodigo;
+
+    /** Semestre del pensum (1 = más fácil, 10 = más difícil). */
+    @NotNull(message = "El semestre es obligatorio")
+    @Min(value = 1, message = "El semestre debe estar entre 1 y 10")
+    @Max(value = 10, message = "El semestre debe estar entre 1 y 10")
+    private Integer semestre;
 }
