@@ -18,7 +18,9 @@ public record CursoResponse(
         String docenteNombre,
         String horario,
         String periodo,
-        Integer cupo
+        Integer cupo,
+        Integer cuposDisponibles,
+        String estado
 ) {
     public static CursoResponse from(Curso curso) {
         return new CursoResponse(
@@ -29,7 +31,9 @@ public record CursoResponse(
                 curso.getDocente().getNombre() + " " + curso.getDocente().getApellido(),
                 curso.getHorario(),
                 curso.getPeriodo(),
-                curso.getCupo()
+                curso.getCupo(),
+                curso.getCuposDisponibles(),
+                curso.getEstado() == null ? null : curso.getEstado().name()
         );
     }
 }

@@ -55,4 +55,27 @@ public class Curso {
     @Min(value = 1, message = "El cupo debe ser al menos 1")
     @Column(nullable = false)
     private Integer cupo;
+
+    /**
+     * Cupos que quedan. Se descuenta con UNA sola sentencia condicional
+     * (ver CursoRepository.reservarCupo), nunca con "leo, comparo, escribo".
+     * Nullable en la columna para que ddl-auto=update pueda agregarla sobre
+     * filas existentes; CursoMigracion la rellena al arrancar.
+     */
+    @Column(name = "cupos_disponibles")
+    private Integer cuposDisponibles;
+
+    /** A1: un curso no se borra, se marca INACTIVO. */
+    @Enumerated(EnumType.STRING)
+    // Sin NOT NULL en el DDL de Hibernate (no podría agregarse sobre filas existentes):
+    // CursoMigracion pone el default 'ACTIVO', rellena los null y luego aplica NOT NULL.
+    @Column(length = 10)
+    @Builder.Default
+    private EstadoCurso estado = EstadoCurso.ACTIVO;
+
+    @PrePersist
+    void antesDeCrear() {
+        if (estado == null) estado = EstadoCurso.ACTIVO;
+        if (cuposDisponibles == null) cuposDisponibles = cupo;
+    }
 }

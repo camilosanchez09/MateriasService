@@ -29,6 +29,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> handleConflict(ConflictException ex) {
+        ApiError body = new ApiError(HttpStatus.CONFLICT.value(), ex.getCodigo(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(UnprocessableException.class)
+    public ResponseEntity<ApiError> handleUnprocessable(UnprocessableException ex) {
+        ApiError body = new ApiError(HttpStatus.UNPROCESSABLE_ENTITY.value(), ex.getCodigo(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         List<String> detalles = ex.getBindingResult().getFieldErrors().stream()

@@ -88,7 +88,7 @@ public class CursoController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Eliminar un curso")
+    @Operation(summary = "Inactivar un curso (no se borra: queda INACTIVO y no acepta inscripciones)")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         service.eliminar(id);
         return ResponseEntity.noContent().build();
