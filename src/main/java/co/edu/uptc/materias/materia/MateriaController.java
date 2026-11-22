@@ -41,7 +41,11 @@ public class MateriaController {
 
             @Parameter(description = "Filtrar por programa académico (coincidencia exacta, case-insensitive)") @RequestParam(required = false) String programa,
 
+            @Parameter(description = "Filtrar por código del programa: ISIS, IIND, ICIV, ADEM, CPUB, DERE, TGRE") @RequestParam(required = false) String programaCodigo,
+
             @Parameter(description = "Texto a buscar en nombre o código (parcial, case-insensitive)") @RequestParam(required = false) String search,
+
+            @Parameter(description = "Semestre exacto del pensum (1 a 10)") @RequestParam(required = false) Integer semestre,
 
             @Parameter(description = "Créditos mínimos (mayor o igual a)") @RequestParam(required = false) Integer creditosMin) {
 
@@ -51,9 +55,10 @@ public class MateriaController {
 
         Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(direction, sortBy));
 
-        boolean hayFiltros = programa != null || search != null || creditosMin != null;
+        boolean hayFiltros = programa != null || programaCodigo != null || search != null
+                || semestre != null || creditosMin != null;
         Page<Materia> resultado = hayFiltros
-                ? service.listarConFiltros(programa, search, creditosMin, pageable)
+                ? service.listarConFiltros(programa, programaCodigo, search, semestre, creditosMin, pageable)
                 : service.listar(pageable);
 
         return ResponseEntity.ok(resultado);

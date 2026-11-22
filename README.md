@@ -26,7 +26,7 @@ caso de un id "externo" hacia otro módulo.
 - PostgreSQL 16 (contenedor Docker)
 - Bean Validation (jakarta.validation)
 - springdoc-openapi (Swagger UI)
-- Datafaker (carga inicial de datos ficticios)
+- Datos de demostración deterministas (sin dependencias externas)
 - Lombok
 
 ## 1. Requisitos
@@ -54,6 +54,11 @@ Estudiantes también publica su base en 5433, así que si corren los dos en la m
 pon, por ejemplo, `DB_PORT=5436` en un archivo `.env` (copia de `.env.example`) y exporta
 la misma variable antes de `mvn spring-boot:run`.
 
+El puerto host 5433 se eligió para no chocar con las bases de datos de los otros módulos
+cuando los 4 procesos corren al tiempo en la misma máquina: Estudiantes publica `5436`,
+Inscripciones `5434` y Autenticación `5435`. Ya está configurado en
+`src/main/resources/application.properties`.
+
 ## 3. Ejecutar la aplicación
 
 ```bash
@@ -62,8 +67,10 @@ mvn spring-boot:run
 
 Al arrancar por primera vez:
 - Hibernate crea automáticamente las tablas (`spring.jpa.hibernate.ddl-auto=update`).
-- El `DataSeeder` puebla la base con **20 materias**, **15 docentes** y **30 cursos**
-  ficticios (solo si las tablas están vacías, no duplica en reinicios).
+- El `DataSeeder` reconstruye los datos de demostración cuando cambia la versión del
+  dataset (tabla `seed_control`): **7 pensums de 40 materias** (4 por semestre, del
+  semestre 1 al 10), **20 docentes** y **2240 cursos** (un curso por materia en cada
+  uno de los 8 periodos, de `2023-1` a `2026-2`). No duplica datos en reinicios.
 
 La API queda disponible en `http://localhost:8081`.
 
@@ -96,6 +103,9 @@ Cada recurso soporta:
 
 **Materias** (`GET /api/materias`)
 - `programa` — coincidencia exacta, case-insensitive.
+- `programaCodigo` — código corto del pensum (`ISIS`, `IIND`, `ICIV`, `ADEM`,
+  `CPUB`, `DERE`, `TGRE`), case-insensitive.
+- `semestre` — semestre exacto del pensum (1 a 10).
 - `search` — texto parcial en nombre o código.
 - `creditosMin` — créditos mayores o iguales al valor dado.
 
@@ -106,14 +116,17 @@ Cada recurso soporta:
 **Cursos** (`GET /api/materias/cursos`)
 - `periodo` — coincidencia exacta (ej. `2026-2`).
 - `materiaId` / `docenteId` — cursos de una materia o docente puntual.
+- `programaCodigo` — cursos cuya materia pertenece a ese pensum.
+- `semestre` — cursos cuya materia está en ese semestre del pensum.
 - `cupoMin` — cupo mayor o igual al valor dado.
 
 ### Endpoint que consume el Gateway
 
-`GET /api/materias/cursos/{id}` devuelve el curso ya "aplanado" (con el nombre de la
-materia y el id del docente resueltos), y `GET /api/materias/docentes/{id}` devuelve
-el docente completo. Son los dos que el Gateway llama en los pasos 3 y 4 de
-`/api/estudiantes/{id}/detalle` (ver sección 6.1 del enunciado del laboratorio).
+`GET /api/materias/cursos/{id}` devuelve el curso ya "aplanado" (con el nombre,
+código, créditos, semestre y programa de la materia, y el id del docente resueltos), y
+`GET /api/materias/docentes/{id}` devuelve el docente completo. Son los dos que el
+Gateway llama en los pasos 3 y 4 de `/api/estudiantes/{id}/detalle` (ver sección 6.1
+del enunciado del laboratorio).
 
 ## 6. Manejo de errores
 
